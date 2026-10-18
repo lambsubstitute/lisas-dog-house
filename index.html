@@ -5124,15 +5124,15 @@
         // Labradors: broad in the chest, level backed, with a thick otter tail and soft drop ears.
         const BREEDS = {
             labrador: { name: 'Labrador', len: 15, chest: 6.6, rump: 5.8, legH: 10, tuck: 0.3, neck: 3.7, skull: 4.8, muzzle: 5.4, muzzleH: 4.1,
-                        ear: 'drop', earLen: 6.2, earW: 3.4, tail: 'otter', tailLen: 12, tailW: 3.2, legW: 2.9, paw: 1.6 },
+                        ear: 'drop', earLen: 6.2, earW: 3.4, tail: 'otter', tailLen: 15, tailW: 3.9, legW: 2.9, paw: 1.6 },
             spaniel:  { name: 'Springer Spaniel', len: 12, chest: 5.4, rump: 4.6, legH: 8.5, tuck: 0.35, neck: 3, skull: 3.9, muzzle: 4.4, muzzleH: 3.1,
-                        ear: 'long', earLen: 9, earW: 4, tail: 'feather', tailLen: 7, tailW: 2.2, legW: 2.3, paw: 1.4 },
+                        ear: 'long', earLen: 9, earW: 4, tail: 'feather', tailLen: 9, tailW: 2.8, legW: 2.3, paw: 1.4 },
             dachshund: { name: 'Dachshund', len: 15, chest: 4.6, rump: 3.9, legH: 3.4, tuck: 0.12, neck: 2.6, skull: 3.5, muzzle: 4.6, muzzleH: 2.6,
-                        ear: 'drop', earLen: 5.4, earW: 2.8, tail: 'otter', tailLen: 8, tailW: 2, legW: 2.2, paw: 1.3 },
+                        ear: 'drop', earLen: 5.4, earW: 2.8, tail: 'otter', tailLen: 10, tailW: 2.4, legW: 2.2, paw: 1.3 },
             collie:   { name: 'Border Collie', len: 13, chest: 5.4, rump: 4.6, legH: 8.6, tuck: 0.35, neck: 3, skull: 3.9, muzzle: 4.6, muzzleH: 2.9,
-                        ear: 'fold', earLen: 3.4, earW: 2.8, tail: 'feather', tailLen: 10, tailW: 2.6, legW: 2.2, paw: 1.3 },
+                        ear: 'fold', earLen: 3.4, earW: 2.8, tail: 'feather', tailLen: 12, tailW: 3.1, legW: 2.2, paw: 1.3 },
             jack:     { name: 'Jack Russell', len: 9, chest: 4.2, rump: 3.6, legH: 5.2, tuck: 0.3, neck: 2.4, skull: 3.3, muzzle: 3.4, muzzleH: 2.4,
-                        ear: 'fold', earLen: 2.6, earW: 2.4, tail: 'up', tailLen: 5, tailW: 1.8, legW: 1.8, paw: 1.1 }
+                        ear: 'fold', earLen: 2.6, earW: 2.4, tail: 'up', tailLen: 6.5, tailW: 2.2, legW: 1.8, paw: 1.1 }
         };
 
         // Pictures for the speech and dream bubbles: a tennis ball, a bone, the rope toy
@@ -5239,8 +5239,8 @@
         }
         // The tail: leaving the rump at (x, y) at angle a (0 forward, PI straight back, -PI/2 up),
         // bending along its length. An otter tail is thick at the root and tapers to a point.
-        function dogTail(c, dog, x, y, a, bendAmt = 0) {
-            const br = dog.breed, pal = dog.pal, len = br.tailLen * dog.size;
+        function dogTail(c, dog, x, y, a, bendAmt = 0, depth = 1) {
+            const br = dog.breed, pal = dog.pal, len = br.tailLen * dog.size * depth;
             const w0 = br.tailW * dog.size, w1 = br.tail === 'otter' ? 0.9 : br.tail === 'feather' ? 1.6 : 1;
             const dabs = [], ds = 0.25;
             let ang = a;
@@ -5310,7 +5310,7 @@
             }
             if (o.pant) {
                 const [tx, ty] = toW(rs * 0.55 + ml * 0.55, mh * 0.55);
-                const bob = Math.sin(dog.animTick * 0.5) > 0 ? 0.5 : 0;
+                const bob = Math.sin(dog.animTick * 0.3) > 0 ? 0.5 : 0;
                 hd(c, tx - 1, ty, 2.5, 2.5 + bob, TONGUE);
                 hd(c, tx - 1, ty + 2 + bob, 2.5, 0.5, TONGUE_DARK);
                 hd(c, tx, ty + 0.5, 0.5, 1.5 + bob, TONGUE_DARK);
@@ -5441,7 +5441,7 @@
                 // nose to the ground, front paws scrabbling away, bottom up and tail going
                 p.H = [p.C[0] + 9.6 * k, p.C[1] + 6.6 * k]; p.ang = 0.9;
                 p.C[1] += 1.2 * k; p.shoulder[1] += 1.2 * k; p.R[1] -= 0.4 * k;
-                const sc = Math.sin(t * 0.9);
+                const sc = Math.sin(t * 0.55);
                 p.feet.fn = [p.C[0] + 4 * k + sc * 1.6 * k, -Math.max(0, sc) * 2 * k]; p.lift.fn = Math.max(0, sc);
                 p.feet.ff = [p.C[0] + 3 * k - sc * 1.6 * k, -Math.max(0, -sc) * 2 * k]; p.lift.ff = Math.max(0, -sc);
                 p.tail.a = Math.PI - 1.1;
@@ -5455,9 +5455,14 @@
             }
             if (pose === 'shake') {
                 // the big shake: a twist that runs from the head to the tail, fast
-                const w = Math.sin(t * 1.7);
+                const w = Math.sin(t * 0.85);
                 p.H[0] += w * 1.2 * k; p.H[1] += Math.abs(w) * 0.6 * k; p.ang = 0.2 + w * 0.35;
                 p.C[0] += w * 0.6 * k; p.R[0] -= w * 0.6 * k; p.ear = 0.5 + w * 0.5; p.tail.a = Math.PI - 0.6 + w * 0.6;
+            }
+            if (pose === 'toyshake') {
+                const w = Math.sin(t * 0.42);
+                p.H[0] += w * 0.8 * k; p.H[1] += 0.6 * k; p.ang = 0.2 + w * 0.3; p.ear = 0.4 + w * 0.35;
+                p.C[0] += w * 0.3 * k;
             }
             if (pose === 'bow') {
                 // the play bow: elbows on the floor, bottom in the air, tail going
@@ -5473,7 +5478,7 @@
             if (pose === 'tug') {
                 // braced, pulling back, head down and gripping: the dog's x is rocked by the game
                 p.R[1] += 1.6 * k; p.C[1] += 0.8 * k; p.R[0] -= 0.6 * k;
-                p.H = [p.C[0] + 8.4 * k, p.C[1] - 1.8 * k]; p.ang = 0.35; p.ear = 0.35 + Math.sin(t * 0.5) * 0.15;
+                p.H = [p.C[0] + 8.4 * k, p.C[1] - 1.8 * k]; p.ang = 0.35; p.ear = 0.35 + Math.sin(t * 0.18) * 0.15;
                 p.shoulder[1] += 0.8 * k; p.hip[1] += 1.6 * k;
                 p.feet.fn = [p.C[0] + 5 * k, 0]; p.feet.ff = [p.C[0] + 3.4 * k, 0];
                 p.feet.hn = [p.R[0] + 1.2 * k, 0]; p.feet.hf = [p.R[0] - 0.4 * k, 0];
@@ -5494,8 +5499,8 @@
                 if (pose === 'scratch') {
                     // a good scratch behind the ear: head tipped, the hind foot going like the clappers
                     p.H[1] += 1.4 * k; p.H[0] -= 0.6 * k; p.ang = 0.5;
-                    const sx = p.H[0] - br.skull * k * 1.05 + Math.sin(t * 1.3) * 1.1 * k, sy = p.H[1] + 0.6 * k + Math.cos(t * 1.3) * 0.8 * k;   // behind the ear
-                    p.scratchPaw = [sx, sy]; p.hindPaw = null; p.ear = 0.3 + Math.sin(t * 1.3) * 0.25;
+                    const sx = p.H[0] - br.skull * k * 1.05 + Math.sin(t * 0.7) * 1.1 * k, sy = p.H[1] + 0.6 * k + Math.cos(t * 0.7) * 0.8 * k;   // behind the ear
+                    p.scratchPaw = [sx, sy]; p.hindPaw = null; p.ear = 0.3 + Math.sin(t * 0.7) * 0.25;
                 }
             }
             if (pose === 'lie' || pose === 'doze' || pose === 'sleep_side' || pose === 'chew' || pose === 'hide') {
@@ -5540,7 +5545,10 @@
             const br = scaledBreed(dog), pal = dog.pal, k = dog.size, t = dog.animTick;
             const farCol = shade(pal.base, -0.32);
             const wagging = dog.wag > 0.05;
-            const wag = wagging ? Math.sin(t * (0.55 + dog.wag * 0.25)) * dog.wag * 0.55 : Math.sin(t * 0.04 + dog.id) * 0.06;
+            const wph = t * (wagging ? 0.14 + dog.wag * 0.1 : 0.04) + dog.id * 2;
+            const swing = Math.sin(wph);
+            const wag = wagging ? swing * (0.35 + dog.wag * 0.75) : swing * 0.08;
+            if (wagging && dog.wag > 0.6 && !p.tail.floor) { p.R[0] += swing * 0.4 * k; p.hip[0] += swing * 0.4 * k; }   // the whole back end wiggles
             dogShadow(c, (p.R[0] + p.C[0]) / 2 + 1, p.shadowY || 0, p.shadow);
             // the far legs, in shadow
             pawMud = dog.mud || 0;
@@ -5556,8 +5564,8 @@
                 fineDabs(c, [[fx + 0.4, fy - br.paw * 0.5, br.paw * 0.9, roundShader(farCol, br.paw, 0.3, 0.95)]]);
             });
             // the tail, behind the rump (on the floor if the dog is sitting or lying down)
-            const ta = p.tail.floor ? p.tail.a + (wagging ? Math.sin(t * 0.5) * 0.12 * dog.wag : 0) : p.tail.a - wag;
-            dogTail(c, dog, p.tail.x, p.tail.y, ta, p.tail.bend + (p.tail.floor ? 0 : wag * 0.04));
+            const ta = p.tail.floor ? p.tail.a - (wagging ? (swing + 1) * 0.22 * dog.wag : 0) : p.tail.a - wag;   // (sitting or lying, it sweeps the floor)
+            dogTail(c, dog, p.tail.x, p.tail.y, ta, p.tail.bend + (p.tail.floor ? 0 : wag * 0.03), wagging && !p.tail.floor ? 0.86 + 0.14 * Math.abs(Math.cos(wph)) : 1);
             // the body, and the neck up to the head
             const R = p.R, C = p.C;
             dogFill(c, Math.min(R[0], C[0]) - p.rr * 1.3 - 1, Math.min(R[1], C[1]) - Math.max(p.rr, p.rc) - 1,
@@ -5631,7 +5639,7 @@
                 hd(c, mx - 0.7, my, 0.5, 0.5, '#ffffff'); hd(c, mx - 0.2, my + 0.5, 0.5, 0.5, '#ffffff'); hd(c, mx + 0.3, my + 1, 0.5, 0.5, '#ffffff');
             } else if (what === 'rope') {
                 const pts = [];
-                for (let s = 0; s <= 9; s += 0.5) pts.push([mx + 1 + Math.sin(s * 0.5 + t * 0.15) * 1.2 - s * 0.25, my + s]);
+                for (let s = 0; s <= 9; s += 0.5) pts.push([mx + 1 + Math.sin(s * 0.5 + t * 0.07) * 1.2 - s * 0.25, my + s]);
                 fineDabs(c, pts.map(([x, y], i) => [x, y, 0.9, Math.floor(i / 2) % 2 ? '#e8dcc0' : '#c0392b']));
                 fineDabs(c, [[pts[pts.length - 1][0], pts[pts.length - 1][1] + 0.6, 1.4, '#c0392b']]);
             } else if (what === 'letter') {
@@ -6084,7 +6092,8 @@
                 if (s === 'bark') return 'bark';
                 if (s === 'bow') return 'bow';
                 if (s === 'tug') return 'tug';
-                if (s === 'shake' || s === 'shake_toy') return 'shake';
+                if (s === 'shake') return 'shake';
+                if (s === 'shake_toy') return 'toyshake';
                 return 'stand';
             }
             describe() {
@@ -6133,7 +6142,7 @@
             goTo(x, y, then, o = {}) {
                 const f = this.sc.floor;
                 if (!o.anywhere) { x = clamp(x, f.x1 - (this.scene === 'kitchen' ? 0 : 30), f.x2); y = clamp(y, f.y1, f.y2); }
-                this.path = { x, y, speed: o.speed || DOG_WALK, sniff: !!o.sniff, then };
+                this.path = { x, y, speed: o.speed || DOG_WALK, sniff: !!o.sniff, then, steps: 0 };
                 this.state = 'walk';
                 this.doing = o.doing || '';
                 this.eyesClosed = false; this.sleepy = false; this.dreaming = false;
@@ -6165,6 +6174,7 @@
                 }
                 this.x += dx / d * sp; this.y += dy / d * sp;
                 if (Math.abs(dx) > 1.5) this.facing = dx > 0 ? 1 : -1;
+                if (++p.steps > 2400) { this.path = null; this.state = 'stand'; this.timer = 20; return; }   // (a walk that never arrives: give up)
                 this.gaitDist = (this.gaitDist || 0) + sp;      // (the legs keep time with the ground: see dogPose)
                 this.leavePrints();
             }
@@ -6493,17 +6503,24 @@
                 const o = this.target;
                 const gone = !o || o.scene !== this.scene || (o.held && o.held !== this) || (o.kind === 'treat' && !floorTreats.includes(o));
                 if (gone) return this.lostChase(o);
-                const dir = Math.abs(o.x - this.x) > 3 ? Math.sign(o.x - this.x) : this.facing;
+                const f = this.sc.floor, lo = f.x1 - 20, hi = f.x2 + 6;
+                let dir = Math.abs(o.x - this.x) > 3 ? Math.sign(o.x - this.x) : this.facing;
                 const reach = Math.abs(dogMouth(this).x - this.x) - 1;                // (so the mouth, not the middle, arrives at it)
-                const tx = o.x - dir * reach, ty = o.y + 0.5;
+                // up against a wall there's no room to stand on that side of it: come at it from the other side
+                if (o.x - dir * reach < lo || o.x - dir * reach > hi) dir = -dir;
+                // and aim for somewhere on the floor (a ball can roll a little past the edge of it)
+                const tx = clamp(o.x - dir * reach, lo, hi), ty = clamp(o.y + 0.5, f.y1, f.y2);
                 const dx = tx - this.x, dy = ty - this.y, d = Math.hypot(dx, dy);
                 const sp = Math.min(this.chaseSpeed, Math.max(0.6, d * 0.25));
-                if (d < 2.4 && o.z < 5) return this.grab(o);
+                if ((d < 2.4 || this.stuckFor > 40) && o.z < 5) { this.stuckFor = 0; return this.grab(o); }
+                const bx = this.x, by = this.y;
                 if (d > 0.5) { this.x += dx / d * sp; this.y += dy / d * sp; }
-                const f = this.sc.floor;
-                this.x = clamp(this.x, f.x1 - 20, f.x2 + 6); this.y = clamp(this.y, f.y1, f.y2);
+                this.x = clamp(this.x, lo, hi); this.y = clamp(this.y, f.y1, f.y2);
+                // never run on the spot: if it isn't getting anywhere, it's as close as it can get
+                const moved = Math.hypot(this.x - bx, this.y - by);
+                this.stuckFor = moved < 0.2 ? (this.stuckFor || 0) + 1 : 0;
                 this.facing = dir;
-                this.gaitDist = (this.gaitDist || 0) + (d > 0.5 ? sp : 0);
+                this.gaitDist = (this.gaitDist || 0) + moved;
                 this.leavePrints();
                 if (--this.timer <= 0) { this.target = null; this.settle(); }
             }
@@ -6588,7 +6605,7 @@
                 const t = this.tug;
                 if (!t || !t.other || t.other.state !== 'tug') return this.settle();
                 // the pair rock back and forth together; the lead dog decides when it's over
-                const sway = Math.sin(globalTick * 0.13 + t.seed) * 2.2 + Math.sin(globalTick * 0.31) * 0.6;
+                const sway = Math.sin(globalTick * 0.055 + t.seed) * 2.8 + Math.sin(globalTick * 0.13 + t.seed * 2) * 0.5;
                 this.x = t.baseX + sway;
 
                 if (!t.lead) return;
