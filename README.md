@@ -16,12 +16,15 @@ Everything is in one file, `index.html`. There's nothing to install or build: op
 - **Walkies.** 🦮 Walkies (or the leads on the peg rail): they race to the garden gate, go out, and come back a few minutes later, tired, muddy and with a story.
 - **A life of their own.** Left to themselves they find their own fun: they fetch the ball and play fetch with themselves when you don't throw it, start games of tug and chase, sniff hello (the dog way), scratch, stretch, dig in the flower bed, hoover under the table for crumbs and ask to go out. A squirrel runs along the fence now and then (cue barking), blackbirds land on the lawn to be chased off, and Marmalade, the big ginger cat from next door, sits on the fence washing his paws while the dogs go spare.
 - **Little things.** Begging by the table at lunch and dinner, play bows, the evening zoomies, legs paddling and a dream bubble when they dream, and hiding under the table in a thunderstorm. They bound when they run, and their legs keep time with the ground.
+- **Halloween and Bonfire Night.** From mid-October to 1 November there are carved pumpkins on the dresser, the windowsill and in the garden (lit after dark), a cobweb, costumes for the dogs, and trick-or-treaters knocking in the evening on the 31st. (The 🍂 season button previews either.) In the week around 5 November there are fireworks over the Levels and a bonfire glow beyond the hedge after dark: the dogs bolt indoors and hide, trembling, until you give them a fuss.
 - **The diary.** 📔 Diary keeps a log of the day, and the tricks each dog knows. Everything (needs, tricks, the diary, the bowls, the paw prints) is remembered in your browser between visits.
 - **Your own dogs.** In Settings ⚙️ you can change Mac and Cheese or make your own household of up to three: name, breed (Labrador, Springer Spaniel, Border Collie, Dachshund, Jack Russell), coat, collar, character and bark. "Back to Mac and Cheese" puts the originals back.
+- **Puppies.** Tick 🐶 Puppy on any dog in Settings, or press 🐶 Add a puppy (a little one of whatever's already here: for Mac and Cheese, a black Lab). Puppies are small and round with big heads, trip over their own paws when they get going, nap a lot, pinch your wellies off the boot tray by the door (click a dropped welly to put it back) and sleep in a wire crate between the bowls and the table, with the door shut at night.
+- **You.** Where your pointer is on the floor is where you are: often a dog comes and follows you about, and sits at your feet when you stop. Click (or tap) the floor with 🖐️ Fuss to call one over. Come back after a while away and they come running to say hello; if they haven't been out for hours, one goes and sits under the leads and looks at you. Take the leads off the pegs (or press 🦮 Walkies) and they're gone from the rail until everyone's home.
 - **On a phone** the room stays at the top with the buttons in tidy rows underneath.
 - **The outside world.** Real time of day and seasons, made-up weather or the real weather where you live (Settings ⚙️), exactly as in the cat game.
 
-Still to come: puppies, and a proper look on a real phone.
+Still to come: a proper look on a real phone.
 
 ## Making changes
 
@@ -48,6 +51,11 @@ python3 tests/shot.py $GAME shot.png 2026-10-18T21:30:00         # a screenshot 
 python3 tests/play_test.py $GAME fetch.png "scene='garden'; dogs.forEach(d => d.scene = 'garden'); throwBall(260, 160)" 360 40   # script a moment, grab frames
 python3 tests/persist_test.py $GAME                              # saves survive a reload
 python3 tests/creator_test.py $GAME                              # adding a dog in Settings, moving them in, reloading, going back to Mac and Cheese
+python3 tests/dog_sim.py $GAME 12000 3 2026-11-05T19:30:00      # Bonfire Night: fireworks, everyone hiding
+SETUP="buildHousehold([...ORIGINAL_DOGS, {name:'Pip', breed:'labrador', coat:'black', size:1.3, puppy:true}])" EVERY=400 python3 tests/dog_sim.py $GAME 12000 8   # with a puppy
+python3 tests/pup_poses.py $GAME pups.png stand walk run sit lie   # poses, with two puppies in front
+python3 tests/pup_creator.py $GAME                               # 🐶 Add a puppy in Settings
+python3 tests/company_test.py $GAME                              # following you, calling a dog, the welcome home, the walkies hint
 python3 tests/breed_poses.py $GAME breeds.png stand sit lie       # the other breeds
 python3 tests/run_strip.py $GAME run.png                         # a dog bounding across the lawn, frame by frame
 SETUP="currentWeatherIdx = 4; updateOutside(true);" python3 tests/dog_sim.py $GAME 36000 6 2026-06-18T15:00:00   # a dry afternoon: what they do on their own

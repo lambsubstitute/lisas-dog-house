@@ -3820,6 +3820,11 @@
             o.connect(g); g.connect(this.ctx.destination);
             o.start(t); o.stop(t + 0.1);
         };
+        // A knock at the front door: three raps on wood
+        CozySoundEngine.prototype.playKnock = function() {
+            if (!this.enabled || !this.ctx) return;
+            for (let i = 0; i < 3; i++) this.noiseBurst(this.ctx.currentTime + i * 0.17, 'bandpass', 380, 2.5, 0.12, 0.003, 0.07);
+        };
         // A growly little rumble, for tug of war
         CozySoundEngine.prototype.playGrowl = function(voice = 'woof') {
             if (!this.enabled || !this.ctx) return;
@@ -4316,26 +4321,10 @@
                 if (Math.abs(x - 307.5) < 0.5 && y > 56) c = '#3a3f22';
                 return c;
             });
-            // the two leads, looped over the pegs
-            [[298, '#c0392b'], [316, '#d9a521']].forEach(([px, col]) => {
-                G.fill(px - 2, 52, 6, 26, (x, y) => {
-                    const l = px + 0.2, r = px + 2.6;
-                    if (y < 76 && (Math.abs(x - l) < 0.5 || Math.abs(x - r) < 0.5)) return x < px + 1 ? shade(col, 0.15) : shade(col, -0.15);
-                    if (y >= 75 && y < 77 && x >= l && x <= r) return '#b0b6bb';                   // the clip
-                    return null;
-                });
-            });
+            // (the two leads are drawn live, in YOUR COMPANY: they go walkies)
             // wellies on the tray
             G.rect(295, 132, 24, 2, '#2a2a2a');
-            [[298, '#3d5a3a'], [306, '#3d5a3a']].forEach(([wx, col]) => {
-                G.fill(wx, 118, 6, 14, (x, y, fx, fy) => {
-                    if (y > 128 && x > wx + 5) return null;
-                    if (y < 128 && x > wx + 4) return null;
-                    const t = x < wx + 1 ? 0.2 : x > wx + 3.5 ? -0.25 : 0;
-                    return shade(y < 119.5 ? shade(col, -0.2) : col, t);
-                });
-                G.fill(wx + 4, 128, 3, 4, () => shade(col, -0.05));
-            });
+            // (the wellies themselves are drawn live, in PUPPIES: a puppy may run off with one)
             G.S.smooth().outline(-0.75);
             stamp(P, G.S, 293, 44, [1, 1, -0.28, true]);
         }
@@ -4539,11 +4528,15 @@
         function drawKitchen() {
             const { x: winX, y: winY, w: winW, h: winH } = WIN;
             drawOutside(winX, winY, winW, winH);
+            drawFireworks(winX - 120 * 0.6, winY + 4, 0.6);                        // (seen through the window, if it's Bonfire Night)
             drawGlass();
             drawGlassDrops();
             blit(ctx, kitchenBackdrop(), 0, 0);
             if (outside.season === 'winter' || (outside.temp !== undefined && outside.temp !== null && outside.temp <= 1)) drawFrost(winX, winY, winW, winH);
             drawKitchenDoor();
+            drawHalloweenKitchen();
+            drawWellies();
+            drawLeads();
             drawPendant();
             drawRangeWarmth();
             const fl = bowls.food, wl = bowls.water;
@@ -5094,9 +5087,12 @@
             if (o.phase === 'night' && !(o.cloud > 0.9)) drawMoon(o, 140, 2);
             if (!o.precip && o.phase !== 'night') drawGardenSun(o);
             drawGardenClouds(o, dark);
+            drawFireworks();
             drawGardenDistance(o, dark);
+            drawBonfire();
             if (o.fog) { ctx.fillStyle = `rgba(${o.phase === 'night' ? '70, 80, 96' : '214, 218, 224'}, 0.35)`; ctx.fillRect(0, 0, W, G_SKY_H); }
             blit(ctx, gardenBackdrop(), 0, 0);
+            drawHalloweenGarden();
         }
 
         // ------------------------------------------------------------------
@@ -5571,6 +5567,7 @@
             dogFill(c, Math.min(R[0], C[0]) - p.rr * 1.3 - 1, Math.min(R[1], C[1]) - Math.max(p.rr, p.rc) - 1,
                        Math.max(R[0], C[0]) + p.rc * 1.3 + 1, Math.max(R[1], C[1]) + Math.max(p.rr, p.rc) + 1,
                        (x, y) => inCapsule(x, y, R, C, p.rr, p.rc, 1.12, p.tuck), pal.base);
+            drawCostumeBack(c, dog, [(R[0] + C[0]) / 2 + 1, (R[1] + C[1]) / 2 - (p.rr + p.rc) / 2 + 0.5]);
             const neckBase = [C[0] + p.rc * 0.35, C[1] - p.rc * 0.35], nr = br.neck * k;
             dogFill(c, Math.min(neckBase[0], p.H[0]) - nr - 1, Math.min(neckBase[1], p.H[1]) - nr - 1, Math.max(neckBase[0], p.H[0]) + nr + 1, Math.max(neckBase[1], p.H[1]) + nr + 1,
                     (x, y) => inCapsule(x, y, neckBase, p.H, nr * 1.15, nr * 0.95), pal.base);
@@ -5618,6 +5615,10 @@
             const nb = [neckBase[0] + (p.H[0] - neckBase[0]) * 0.42, neckBase[1] + (p.H[1] - neckBase[1]) * 0.42];
             const mouth = dogHead(c, dog, p.H, p.ang, { eye, pant: (dog.pant || p.mouthOpen) && !dog.eyesClosed && !dog.holding, ear: p.ear || dog.earLift || 0 });
             dogCollar(c, dog, nb, p.H[0] - neckBase[0], p.H[1] - neckBase[1], nr * 1.05);
+            if (isHalloween()) {
+                const rs = br.skull * k, ca = Math.cos(p.ang), sa = Math.sin(p.ang);
+                drawCostumeHead(c, dog, [p.H[0] - 0.1 * rs * ca + rs * 0.95 * sa, p.H[1] - 0.1 * rs * sa - rs * 0.95 * ca], p.ang, rs);
+            }
             if (dog.holding && !dog.tugging) drawHeld(c, dog.holding, mouth[0], mouth[1], t);
             if (p.scratchPaw) {                                                       // the scratching hind leg, up in front of the neck
                 const [hx, hy, hr] = p.haunch, [sx, sy] = p.scratchPaw, legCol = shade(pal.base, 0.12);
@@ -5645,6 +5646,11 @@
             } else if (what === 'letter') {
                 hd(c, mx - 2, my - 0.5, 5, 3.5, '#f4efe2'); hd(c, mx - 2, my - 0.5, 5, 0.5, '#d8cfbf');
                 hd(c, mx - 1.5, my, 2, 0.5, '#b8a888'); hd(c, mx + 2, my - 0.5, 1, 1, '#c0392b');
+            } else if (what === 'welly') {
+                const w = '#3d5a3a';                                                      // a welly by the top of its shaft, swinging
+                const sw = Math.round(Math.sin(t * 0.09) * 1) * 0.5;
+                hd(c, mx - 1.5 + sw, my - 0.5, 3, 5, w); hd(c, mx - 1.5 + sw, my - 0.5, 0.5, 5, shade(w, 0.2)); hd(c, mx + 1 + sw, my - 0.5, 0.5, 5, shade(w, -0.3));
+                hd(c, mx - 1.5 + sw, my + 4.5, 5, 2, shade(w, -0.05)); hd(c, mx - 1.5 + sw, my + 6, 5, 0.5, shade(w, -0.45));   // the foot, and its sole
             } else if (what === 'sock') {
                 fineDabs(c, [[mx, my + 0.5, 1.3, '#6a8ac4'], [mx - 0.5, my + 2, 1.2, '#6a8ac4'], [mx - 1, my + 3.5, 1.3, '#f1ece0']]);
             }
@@ -5659,7 +5665,7 @@
 
         // Draw a dog where it is, through spriteFX (so it's rounded, shaded and outlined)
         function drawPixelDog(c, dog) {
-            const x = dog.x, y = dog.y;
+            const x = dog.x + (dog.state === 'hide' && dog.scared > 0.3 && !dog.calmed && dog.animTick % 4 < 2 ? 0.5 : 0), y = dog.y;   // (trembling)
             const dx = Math.round(x * RES) / RES - Math.round(x), dy = Math.round(y * RES) / RES - Math.round(y);
             spriteFX(c, x, y, g => {
                 g.save();
@@ -5983,6 +5989,212 @@
         }
 
         // ------------------------------------------------------------------
+        // HALLOWEEN & BONFIRE NIGHT: carved pumpkins indoors and out, the dogs in costume, and
+        // trick-or-treaters knocking at the front door of an evening; then in the week of the
+        // fifth of November, fireworks over the Levels and a bonfire glowing on the horizon,
+        // which send the dogs under the table, trembling, until you sit with them.
+        // (The seasons button previews both.)
+        // ------------------------------------------------------------------
+        function hexRgb(h) {
+            const n = parseInt(h.slice(1), 16);
+            return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+        }
+        const isHalloween = () => outside.festive === 'halloween';
+        const isBonfire = () => outside.festive === 'bonfire';
+        const trickOrTreat = { next: 0 };
+        const fireworks = { rockets: [], sparks: [], next: 0, quietUntil: 0, flash: 0, flashCol: '#ffffff', lastBang: -1e9 };
+        const FW_COLOURS = [['#f87171', '#fecaca'], ['#60a5fa', '#bfdbfe'], ['#4ade80', '#bbf7d0'], ['#facc15', '#fef08a'], ['#c084fc', '#e9d5ff'], ['#fb923c', '#fed7aa']];
+        const fireworksOn = () => isBonfire() && outside.phase !== 'day' && outside.phase !== 'dawn' && !outside.storm;
+
+        // ---- Pumpkins ----
+        // A carved pumpkin at (x, y) (the bottom middle), lit from inside after dark
+        function drawPumpkin(x, y, size = 1, face = true) {
+            const lit = face && clamp(outside.darkness / 0.3, 0, 1) > 0.25;
+            spriteFX(ctx, x, y, g => {
+                const r = 4.5 * size, cy = y - r * 0.85;
+                const lobes = [[-0.55, 0.78], [0.55, 0.78], [-0.2, 0.95], [0.2, 0.95]];
+                const dabs = [];
+                lobes.forEach(([ox, rr]) => dabs.push([x + ox * r, cy, r * rr, roundShader('#e8761e', r * rr, 0.55, 0.8, -0.28, 0.16)]));
+                fineDabs(g, dabs);
+                for (let k = -1; k <= 1; k += 2) for (let j = -r * 0.6; j < r * 0.6; j += 0.5) hd(g, x + k * r * 0.38, cy + j, 0.5, 0.5, '#c25a12');   // the ribs
+                pxRect(g, x - 0.5, cy - r * 0.95 - 1.5, 1.5, 2, '#5a6a2a');                                                        // stalk
+                if (face) {
+                    const eye = lit ? '#ffd860' : '#3a1a08', mouth = lit ? '#ffb030' : '#3a1a08';
+                    fineTri(g, x - r * 0.55, cy - r * 0.05, x - r * 0.15, cy - r * 0.05, x - r * 0.35, cy - r * 0.42, eye);
+                    fineTri(g, x + r * 0.15, cy - r * 0.05, x + r * 0.55, cy - r * 0.05, x + r * 0.35, cy - r * 0.42, eye);
+                    hd(g, x - r * 0.55, cy + r * 0.25, r * 1.1, r * 0.25, mouth);
+                    hd(g, x - r * 0.3, cy + r * 0.25, r * 0.2, r * 0.12, '#e8761e'); hd(g, x + r * 0.15, cy + r * 0.38, r * 0.2, r * 0.12, '#e8761e');   // teeth
+                }
+            }, { cache: ['pumpkin', x, y, size, face, lit].join() });
+        }
+        function drawHalloweenKitchen() {
+            if (!isHalloween()) return;
+            drawPumpkin(196, 92, 1, true);                     // on the dresser
+            drawPumpkin(142, 86, 0.6, false);                  // a little one on the windowsill
+            drawPumpkin(208, 92, 0.7, false);
+            // a cobweb up in the corner of the inglenook
+            for (let k = 0; k < 5; k++) {
+                const a = k / 4 * Math.PI / 2;
+                for (let s = 0; s < 12; s += 0.5) hd(ctx, 14 + Math.cos(a) * s, 40 + Math.sin(a) * s, 0.5, 0.5, 'rgba(230, 230, 235, 0.45)');
+            }
+            for (let rr = 3; rr < 12; rr += 3) for (let k = 0; k < 16; k++) {
+                const a = k / 15 * Math.PI / 2;
+                hd(ctx, 14 + Math.cos(a) * rr, 40 + Math.sin(a) * rr, 0.5, 0.5, 'rgba(230, 230, 235, 0.35)');
+            }
+        }
+        function drawHalloweenGarden() {
+            if (!isHalloween()) return;
+            drawPumpkin(62, 140, 1, true);
+            drawPumpkin(76, 142, 0.7, false);
+            drawPumpkin(55, 146, 0.55, true);
+        }
+        function pumpkinGlows() {
+            // the candles inside the carved ones, after dark
+            const night = clamp(outside.darkness / 0.3, 0, 1);
+            if (!isHalloween() || night < 0.25) return [];
+            const f = 1 + Math.sin(globalTick * 0.3) * 0.08;
+            return scene === 'kitchen' ? [[196, 88, 20 * f]] : [[62, 136, 20 * f], [55, 143, 14 * f]];
+        }
+
+        // ---- Costumes ----
+        // Each dog in the house gets one: a witch's hat, bat wings, devil horns
+        const COSTUMES = ['hat', 'wings', 'horns'];
+        function costumeOf(dog) { return isHalloween() ? COSTUMES[dog.id % COSTUMES.length] : null; }
+        // drawn on the sprite (see drawDogBody): on the head (top, its angle) or on the back
+        function drawCostumeHead(c, dog, top, ang, rs) {
+            const cos = costumeOf(dog);
+            if (cos === 'hat') {
+                const [tx, ty] = top, lean = -0.35;
+                hd(c, tx - rs * 1.2, ty - 0.5, rs * 2.4, 1, '#1e1a24');                                           // the brim
+                fineTri(c, tx - rs * 0.6, ty, tx + rs * 0.6, ty, tx + lean * 6 - 1.5, ty - rs * 1.9, '#2a2433');      // the cone, bent back
+                hd(c, tx - rs * 0.55, ty - 1.5, rs * 1.1, 1, '#8e44ad');                                          // a purple band
+                hd(c, tx - 0.5, ty - 1.5, 1, 1, '#facc15');                                                        // and its buckle
+            } else if (cos === 'horns') {
+                const [tx, ty] = top;
+                [[-rs * 0.35, -0.3], [rs * 0.35, 0.3]].forEach(([dx, lean]) => fineTri(c, tx + dx - 1, ty + 0.5, tx + dx + 1, ty + 0.5, tx + dx + lean * 2, ty - 3, '#d62828'));
+                hd(c, tx - rs * 0.6, ty + 0.3, rs * 1.2, 0.5, '#d62828');                                         // the headband
+            }
+        }
+        function drawCostumeBack(c, dog, back) {
+            if (costumeOf(dog) !== 'wings') return;
+            const [bx, by] = back, flap = Math.sin(dog.animTick * 0.12) * 1.5;
+            const col = '#2a2433', edge = '#4a3f5a';
+            fineTri(c, bx - 1, by, bx + 4, by, bx - 6, by - 7 - flap, col);
+            fineTri(c, bx - 6, by - 7 - flap, bx - 2, by - 1, bx - 10, by - 4 - flap, col);
+            fineTri(c, bx - 10, by - 4 - flap, bx - 3, by, bx - 11, by, col);
+            hd(c, bx - 6.5, by - 7.5 - flap, 1, 1, edge);
+        }
+
+        // ---- Trick or treat ----
+        function updateTrickOrTreat() {
+            if (!isHalloween() || !(outside.hour >= 16.5 && outside.hour < 21)) return;
+            if (SEASON_MODES[currentSeasonIdx].id === 'auto' && nowDate().getDate() !== 31) return;   // only on the night itself (or when previewing Halloween)
+            if (!trickOrTreat.next) trickOrTreat.next = globalTick + (1 + Math.random() * 2) * 3600;
+            if (globalTick < trickOrTreat.next || walkies.phase !== 'none') return;
+            trickOrTreat.next = globalTick + (3 + Math.random() * 4) * 3600;
+            sound.playKnock();
+            const who = pick(['two little witches', 'a very small skeleton', 'a ghost (in a sheet)', 'three vampires and a mum', 'a pumpkin with legs', 'a dinosaur']);
+            showToast(`🎃 Knock knock! Trick or treaters: ${who}. ${householdNames()} ${dogs.length > 1 ? 'have' : 'has'} opinions`);
+            logDiary(`Trick or treaters came: ${who}. The dogs barked`, '🎃', { key: 'tot', every: 5 });
+            dogs.forEach((d, i) => setTimeout(() => d.hearPost(), 150 + i * 250));
+        }
+
+        // ---- Fireworks ----
+        function launchRocket() {
+            const x = 70 + Math.random() * 240, peak = 8 + Math.random() * 34;
+            fireworks.rockets.push({ x, y: 72, vy: -(1.6 + Math.random() * 0.6), peak, col: pick(FW_COLOURS), drift: (Math.random() - 0.5) * 0.3 });
+            if (Math.random() < 0.4) sound.playWhistle();
+        }
+        function burst(r) {
+            const n = 40 + Math.floor(Math.random() * 20), big = Math.random() < 0.35;
+            for (let i = 0; i < n; i++) {
+                const a = i / n * Math.PI * 2 + Math.random() * 0.2, v = (big ? 1.7 : 1.2) * (0.75 + Math.random() * 0.35);
+                fireworks.sparks.push({ x: r.x, y: r.y, vx: Math.cos(a) * v, vy: Math.sin(a) * v, life: 50 + Math.random() * 25, age: 0, col: r.col });
+            }
+            fireworks.flash = big ? 1 : 0.6; fireworks.flashCol = r.col[0];
+            fireworks.lastBang = globalTick;
+            sound.playBang(big ? 0.9 : 0.5, Math.random() < 0.5);
+            scareDogs(big ? 1 : 0.6);
+        }
+        function updateFireworks() {
+            const F = fireworks;
+            if (fireworksOn()) {
+                if (!F.next) F.next = globalTick + 60;
+                if (globalTick > F.next) {
+                    // they come in volleys, with quiet spells in between
+                    if (globalTick > F.quietUntil) {
+                        launchRocket();
+                        F.next = globalTick + 25 + Math.random() * 70;
+                        if (Math.random() < 0.08) { F.quietUntil = globalTick + (40 + Math.random() * 60) * 60; }
+                    } else F.next = F.quietUntil;
+                }
+            }
+            F.rockets = F.rockets.filter(r => {
+                r.y += r.vy; r.x += r.drift; r.vy *= 0.985;
+                if (r.y <= r.peak || r.vy > -0.4) { burst(r); return false; }
+                return true;
+            });
+            F.sparks = F.sparks.filter(s => { s.px = s.x; s.py = s.y; s.x += s.vx; s.y += s.vy; s.vx *= 0.955; s.vy = s.vy * 0.955 + 0.022; return ++s.age < s.life; });
+            F.flash *= 0.9;
+        }
+        // Draw them across the garden sky (ox, oy shift and scale squeezes them into the kitchen window)
+        function drawFireworks(ox = 0, oy = 0, sc = 1, clipBox = null) {
+            const F = fireworks;
+            if (!F.rockets.length && !F.sparks.length) return;
+            ctx.save();
+            if (clipBox) { ctx.beginPath(); ctx.rect(...clipBox); ctx.clip(); }
+            F.rockets.forEach(r => { hd(ctx, ox + r.x * sc, oy + r.y * sc, 0.5, 1, '#fff3c4'); hd(ctx, ox + r.x * sc, oy + r.y * sc + 1, 0.5, 1.5, 'rgba(255, 200, 120, 0.4)'); });
+            F.sparks.forEach(s => {
+                const t = s.age / s.life;
+                if (t > 0.7 && (s.age + Math.floor(s.x)) % 3 === 0) return;              // twinkling out
+                ctx.globalAlpha = clamp(1.3 - t, 0, 1);
+                const sz = sc < 0.8 ? 0.5 : t < 0.5 ? 1 : 0.5;
+                if (s.px !== undefined && t < 0.6) {                                             // a little trail behind each spark
+                    ctx.globalAlpha *= 0.5;
+                    hd(ctx, ox + (s.x * 2 - s.vx * 2.2) * sc / 2, oy + (s.y * 2 - s.vy * 2.2) * sc / 2, 0.5, 0.5, s.col[0]);
+                    ctx.globalAlpha = clamp(1.3 - t, 0, 1);
+                }
+                hd(ctx, ox + s.x * sc, oy + s.y * sc, sz, sz, t < 0.25 ? '#ffffff' : t < 0.5 ? s.col[1] : s.col[0]);
+            });
+            ctx.globalAlpha = 1;
+            ctx.restore();
+        }
+        // The bonfire, far off on the Levels
+        function drawBonfire() {
+            if (!isBonfire() || outside.phase === 'day' || outside.precip) return;
+            const x = 112, y = 70, f = Math.sin(globalTick * 0.4) * 0.5;
+            const g = ctx.createRadialGradient(x, y, 0.5, x, y, 9);
+            g.addColorStop(0, 'rgba(255, 170, 70, 0.55)'); g.addColorStop(1, 'rgba(255, 120, 40, 0)');
+            ctx.fillStyle = g; ctx.fillRect(x - 10, y - 10, 20, 14);
+            hd(ctx, x - 1, y - 1.5 - f, 2, 1.5 + f, '#ffd860'); hd(ctx, x - 0.5, y - 2.5 - f, 1, 1, '#ff9a3a');
+        }
+
+        // ---- Frightened dogs ----
+        function scareDogs(power) {
+            dogs.forEach(d => {
+                if (d.scene === 'out' || ['door', 'away', 'gate', 'out'].includes(d.state)) return;
+                d.scared = Math.min(1, (d.scared || 0) + 0.35 * power);
+                if (d.state === 'hide' && d.calmed) return;
+                if (d.scene === 'garden') { if (d.state !== 'walk' || !d.path || d.path.speed < 1.5) { breakTug(d); if (d.carry) d.dropCarry(); d.stop(); d.target = null; d.headIndoors('Running in from the bangs!', DOG_RUN); } return; }
+                if (d.state === 'hide' || (d.state === 'walk' && d.doing === 'Off to hide')) return;
+                breakTug(d); if (d.carry) d.dropCarry(); d.stop(); d.target = null;
+                const spot = [UNDER_TABLE[0]].find(s => d.spotFree(s.x + 8, s.y, 40)) || BED_SPOTS.find(s => d.spotFree(s.x, s.y, 18)) || UNDER_TABLE[1];
+                d.goTo(spot.x, spot.y, () => { d.state = 'hide'; d.timer = 900 + Math.random() * 600; d.calmed = false; }, { speed: DOG_RUN, doing: 'Off to hide' });
+            });
+            const visible = dogs.filter(d => d.scene === scene && d.scared > 0.3);
+            if (visible.length && !fireworks.warned) {
+                fireworks.warned = true;
+                showToast(`🎆 Fireworks! ${listNames(visible.map(d => d.name))} ${visible.length > 1 ? 'are' : 'is'} hiding. Give them a fuss to calm them down`);
+                logDiary('Fireworks. Everyone hid under the table', '🎆', { key: 'fw', every: 60 });
+            }
+        }
+        function calmDog(d) {
+            // sitting with a frightened dog: it stops trembling, and settles
+            d.calmed = true; d.scared = Math.max(0, d.scared - 0.6);
+            showToast(pick([`You sit on the floor with ${d.name}. The trembling stops 🤍`, `${d.name} leans against you and lets out a big sigh 🤍`, `"It's only fireworks." ${d.name} isn't convinced, but feels better 🤍`]));
+        }
+
+        // ------------------------------------------------------------------
         // THE DOGS' DAY: two scenes (the kitchen and the garden) joined by the back door. Every
         // dog lives in one of them at a time (or is 'out' on a walk) and gets on with its day
         // whether you're watching or not: pottering, sniffing about, sitting, flopping down,
@@ -6033,7 +6245,7 @@
             if (o.phase === 'dawn' || o.phase === 'dusk') return 1.2;
             return o.siesta ? 0.8 : 1;
         }
-        const niceOut = () => outside.phase !== 'night' && !outside.precip && !outside.storm;
+        const niceOut = () => outside.phase !== 'night' && !outside.precip && !outside.storm && !(typeof fireworksOn === 'function' && fireworksOn());
         const mealtime = () => { const h = outside.hour; return (h >= 12.5 && h < 13.5) || (h >= 18 && h < 19.5); };
         const AWAKE_BUSY = ['door', 'away', 'gate', 'out', 'tug', 'eat', 'trick', 'shake'];
 
@@ -6044,6 +6256,7 @@
                 this.name = cfg.name;
                 this.breed = BREEDS[cfg.breed] || BREEDS.labrador;
                 this.size = cfg.size || 1;
+                if (cfg.puppy) { this.puppy = true; this.breed = puppyBreed(this.breed); this.size *= PUPPY_SIZE; }
                 this.pal = { ...DOG_COATS[cfg.coat] || DOG_COATS.black };
                 this.collar = cfg.collar || '#c0392b';
                 this.character = cfg.character || 'cuddly';
@@ -6120,7 +6333,7 @@
                 if (s === 'bark') return this.scene === 'garden' ? 'Barking at the gate' : 'Barking at the post';
                 if (s === 'shred') return 'Opening the parcel (with teeth)';
                 if (s === 'shake') return 'Shaking off the rain';
-                if (s === 'hide') return 'Hiding from the thunder';
+                if (s === 'hide') return this.scared > 0.2 ? (this.calmed ? 'Feeling braver now' : 'Hiding from the fireworks, trembling') : 'Hiding from the thunder';
                 if (s === 'excited') return 'WALKIES?!';
                 if (s === 'walk') return this.doing || (this.zoom ? 'The zoomies!' : this.path && this.path.sniff ? 'Sniffing about ' + where : 'Pottering ' + where);
                 if (s === 'sniff') return 'Investigating a smell';
@@ -6204,6 +6417,7 @@
                 if (busyBody && !this.pant) { this.pant = true; this.pantUntil = globalTick + 500; }
                 if (this.alpha < 1 && !['door', 'away', 'gate', 'out'].includes(this.state)) this.alpha = Math.min(1, this.alpha + 0.07);
                 if (this.barkT > 0) this.barkT--;
+                if (this.scared) { this.scared *= 0.9992; if (this.scared < 0.05) { this.scared = 0; this.calmed = false; } }
                 // rain soaks a dog out in the garden; indoors, by the range, it dries off
                 if (this.scene === 'garden' && (outside.precip === 'rain' || outside.precip === 'snow')) {
                     this.wet = Math.min(1, this.wet + 0.0012);
@@ -6313,6 +6527,12 @@
                 this.eyesClosed = false; this.sleepy = false; this.dreaming = false;
                 if (this.walkies) return this.goWalkies();
                 if (this.carry) return this.playWithCarry();
+                // Fireworks: stay hidden (or, once you've sat with them, curl up in bed)
+                if (this.scared > 0.2 && fireworksOn()) {
+                    if (this.scene === 'garden') return this.headIndoors('Running in from the bangs!', DOG_RUN);
+                    if (this.calmed) return this.goToBed();
+                    this.state = 'hide'; this.timer = 600 + Math.random() * 600; return;
+                }
                 // Thunder: get indoors and under the table
                 if (outside.storm) {
                     if (out) return this.headIndoors('Running in from the thunder', DOG_TROT);
@@ -6640,6 +6860,11 @@
             // ---- You ----
             pet() {
                 particleScene = this.scene;
+                if (this.state === 'hide' && this.scared > 0.2) {
+                    for (let i = 0; i < 3; i++) setTimeout(() => { particleScene = this.scene; spawnParticle('heart', this.x + (Math.random() - 0.5) * 16, this.y - 16 - Math.random() * 4); }, i * 160);
+                    this.needs.love = clamp(this.needs.love + 0.3, 0, 1);
+                    return calmDog(this);
+                }
                 this.needs.love = clamp(this.needs.love + 0.25, 0, 1);
                 for (let i = 0; i < 3; i++) setTimeout(() => { particleScene = this.scene; spawnParticle('heart', this.x + (Math.random() - 0.5) * 16, this.y - 26 - Math.random() * 4); }, i * 140);
                 sound.playWoof(this.cfg.voice, 'happy');
@@ -7035,6 +7260,7 @@
                 return;
             }
             if (tool === 'treat' && onFloor) { tossTreat(mx, my); return; }
+            if (tidyWelly(mx, my, sl)) return;
             if (scene === 'kitchen') {
                 // the post on the mat, the shreds of a parcel, muddy paw prints
                 const it = post.items.find(i => Math.abs(mx - i.x) < 9 + sl && Math.abs(my - i.y + 3) < 7 + sl);
@@ -7067,6 +7293,7 @@
                 if (mx >= 284 && mx <= 310 && my >= 84 && my <= 114) { showToast('The garden gate. Walkies goes this way 🚪'); return; }
                 if (my < 80) { cycleWeather(); return; }
             }
+            if (tool === 'pet' && my >= f.y1 - 2) callYou(mx, my);                     // the floor: call a dog over to you
         });
         function tidyPost() {
             const letters = post.items.filter(i => i.kind === 'letter').length, shreds = post.items.some(i => i.kind === 'shreds'), parcel = post.items.some(i => i.kind === 'parcel');
@@ -7101,7 +7328,7 @@
                     <div class="flex-1 min-w-0">
                         <div class="flex items-center gap-2">
                             <span class="font-pixel-title text-[11px] whitespace-nowrap" style="color: ${shade(d.collar, 0.25)}">${esc(d.name)}</span>
-                            <span class="text-xs text-amber-200/70 truncate">${esc(d.breed.name)} · ${esc(CHARACTER_TEXT[d.character] || '')}</span>
+                            <span class="text-xs text-amber-200/70 truncate">${esc(d.breed.name)}${d.puppy ? ' puppy' : ''} · ${esc(CHARACTER_TEXT[d.character] || '')}</span>
                         </div>
                         <div class="mt-1 grid grid-cols-3 gap-2">
                             <div class="flex items-center gap-1"><span class="text-xs leading-none">🦴</span><div class="need-bar flex-1"><div id="need-${i}-food" class="need-fill bg-amber-400" style="width: 50%"></div></div></div>
@@ -7169,6 +7396,13 @@
                 ctx.fillRect(...box);
             };
             const night = clamp(o.darkness / 0.36, 0, 1);
+            if (fireworks.flash > 0.03) {                                         // a firework lights everything up (more out in the garden)
+                const [r, gg, b] = hexRgb(fireworks.flashCol);
+                const a = fireworks.flash * (scene === 'garden' ? 0.22 : 0.12);
+                if (scene === 'garden') glow(160, 20, 10, 160, 60, 260, `${r}, ${gg}, ${b}`, a, [0, 0, W, H]);
+                else glow(133, 50, 6, 133, 90, 140, `${r}, ${gg}, ${b}`, a, [0, 0, W, H]);
+            }
+            pumpkinGlows().forEach(([x, y, rr]) => glow(x, y, 1, x, y, rr, '255, 170, 60', 0.35, [x - rr, y - rr, rr * 2, rr * 2]));
             if (scene === 'kitchen') {
                 if (fireplaceLit) glow(46, 104, 4, 46, 128, 70 + Math.sin(globalTick * 0.05) * 2, '251, 146, 60', 0.16 + 0.14 * night, [0, 40, 150, 150]);
                 if (lampLit) glow(205, 40, 3, 205, 120, 95, '253, 224, 140', 0.12 + 0.18 * night, [100, 30, 220, 160]);
@@ -7223,6 +7457,9 @@
             updatePost();
             updateWalkies();
             updateVisitors();
+            updateFireworks();
+            updatePuppies();
+            updateTrickOrTreat();
             [ball, rope, ...floorTreats].forEach(updateThing);
             dogs.forEach(d => d.update());
             if (outside.storm && !stormWarned) {
@@ -7246,6 +7483,7 @@
                 things.push({ y: K_TABLE.front + 8, draw: drawTableBack });
                 things.push({ y: K_TABLE.legY, draw: drawTableFront });
                 things.push({ y: 156.5, draw: drawBedFront });
+                puppyThings(things, 'kitchen');
                 things.sort((a, b) => a.y - b.y).forEach(d => d.draw());
             } else {
                 drawGarden();
@@ -7255,6 +7493,7 @@
                 if (nextDoorCat.active) drawNextDoorCat();
                 if (gardenBird.active) things.push({ y: gardenBird.y, draw: drawBlackbird });
                 dogs.forEach(d => { if (d.scene === 'garden' && d.state !== 'away') things.push({ y: d.y, draw: () => drawDog(d) }); });
+                puppyThings(things, 'garden');
                 things.sort((a, b) => a.y - b.y).forEach(d => d.draw());
                 if (tugPair) drawTugRope(tugPair[0], tugPair[1]);
                 drawGardenWeather(outside);
@@ -7348,11 +7587,13 @@
                 }));
             } catch (e) { /* no storage: never mind */ }
         }
+        let lastAway = 0;
         function loadState() {
             let s = null;
             try { s = JSON.parse(localStorage.getItem(SAVE_KEY) || 'null'); } catch (e) { s = null; }
             if (!s || s.v !== 1 || window.__noSave) return false;
             const away = Math.max(0, (Date.now() - (s.at || Date.now())) / 3600e3);       // hours since your last visit
+            lastAway = away;
             (s.dogs || []).forEach((sd, i) => {
                 const d = dogs[i];
                 if (!d || sd.name !== d.name) return;
@@ -7369,7 +7610,6 @@
             if (Array.isArray(s.prints) && away < 6) pawPrints.push(...s.prints);
             if (Array.isArray(s.post)) post.items.push(...s.post.slice(-8));
             if (s.scene && SCENES[s.scene] && away < 0.5) scene = s.scene;
-            if (away > 2) showToast(`Welcome back! ${listNames(dogs.map(d => d.name))} are very pleased to see you 🐾`);
             return true;
         }
         window.addEventListener('pagehide', saveState);
@@ -7379,6 +7619,7 @@
             const house = loadHousehold();
             buildHousehold(house || ORIGINAL_DOGS);
             if (!loadState()) logDiary(`${householdNames()} moved into the farmhouse`, '🏡');
+            else if (lastAway >= 0.33) setTimeout(() => welcomeYou(lastAway), 1500);          // (see YOUR COMPANY)
             renderDogCards();
             updateWeatherButton();
             updateSeasonButton();
@@ -7398,6 +7639,377 @@
             if (open) { houseDraft = null; renderHousePanel(); }
         };
         document.addEventListener('keydown', (e) => { if (e.key === 'Escape') { toggleSettings(false); toggleDiary(false); if (tool !== 'pet') setTool('pet'); } });
+
+        // ------------------------------------------------------------------
+        // PUPPIES: a puppy is any dog in the household with `puppy: true`. Same breed and coat,
+        // but small, round and big-headed, with short legs and a stub of a tail. They trip over
+        // their own feet, chew whatever they can reach (the wellies, mostly) and sleep in a crate.
+        // ------------------------------------------------------------------
+        const PUPPY_SIZE = 0.62;
+        function puppyBreed(b) {
+            const m = (k, f) => b[k] * f;
+            return { ...b, len: m('len', 0.68), chest: m('chest', 0.95), rump: m('rump', 0.92), legH: m('legH', 0.68), legW: m('legW', 1.08),
+                     neck: m('neck', 0.75), skull: m('skull', 1.22), muzzle: m('muzzle', 0.6), muzzleH: m('muzzleH', 0.88),
+                     earLen: m('earLen', 0.95), earW: m('earW', 1.05), tailLen: m('tailLen', 0.5), tailW: m('tailW', 0.85), paw: m('paw', 1.25), tuck: 0.12 };
+        }
+        const hasPuppy = () => dogs.some(d => d.puppy);
+
+        // ---- The wellies on the boot tray by the door (a puppy's favourite thing) ----
+        const WELLY_COL = '#3d5a3a';
+        const WELLY_AT = [298, 306];                                   // the two on the tray (a puppy takes the first)
+        const WELLY_TRAY = { x: 289, y: 141 };                         // where a puppy stands to get its teeth into one
+        const welly = { kind: 'welly', scene: 'kitchen', x: 0, y: 0, z: 0, vx: 0, vy: 0, vz: 0, held: null, moving: false, from: null, home: true };
+        function drawWellyUp(wx) {
+            spriteFX(ctx, wx + 3, 132, g => {
+                const c = WELLY_COL;
+                hd(g, wx, 118, 4, 10, c);
+                hd(g, wx, 118, 1, 10, shade(c, 0.2)); hd(g, wx + 3.5, 118, 0.5, 10, shade(c, -0.25));
+                hd(g, wx, 118, 4, 1.5, shade(c, -0.2));                                                   // the rim
+                hd(g, wx, 128, 5, 4, c); hd(g, wx, 128, 1, 4, shade(c, 0.2));
+                hd(g, wx + 4, 128.5, 3, 3.5, shade(c, -0.05)); hd(g, wx + 4, 128.5, 3, 0.5, shade(c, 0.15)); // the toe
+                hd(g, wx, 131.5, 7, 0.5, shade(c, -0.45));                                               // the sole
+            }, { outline: -0.75 });
+        }
+        function drawWellies() {
+            WELLY_AT.forEach((wx, i) => { if (i > 0 || welly.home) drawWellyUp(wx); });
+        }
+        // A welly dropped on the floor, lying on its side (or, if it's been chewed, a bit worse for it)
+        function drawWellyDown(o) {
+            const x = o.x, y = o.y - o.z, f = o.f || 1;
+            spriteFX(ctx, x, y, g => {
+                const c = WELLY_COL;
+                const sx = f > 0 ? x - 5 : x - 4;                                                          // the shaft, lying along the floor
+                hd(g, sx, y - 3.5, 9, 3.5, c); hd(g, sx, y - 3.5, 9, 1, shade(c, 0.2)); hd(g, sx, y - 0.5, 9, 0.5, shade(c, -0.3));
+                hd(g, f > 0 ? sx - 0.5 : sx + 8.5, y - 3.5, 1, 3.5, shade(c, -0.35));                     // the open top
+                const tx = f > 0 ? x + 4 : x - 7.5;                                                          // the foot, sticking up
+                hd(g, tx, y - 6.5, 3.5, 6.5, shade(c, -0.05)); hd(g, tx, y - 6.5, 3.5, 1, shade(c, 0.18));
+                hd(g, f > 0 ? tx + 3 : tx, y - 6.5, 0.5, 6.5, shade(c, -0.45));                           // the sole
+            }, { outline: -0.75 });
+        }
+        // Click a dropped welly to put it back on the tray
+        function tidyWelly(mx, my, sl) {
+            if (welly.home || welly.held || welly.scene !== scene) return false;
+            if (Math.abs(mx - welly.x) > 8 + sl || Math.abs(my - welly.y + 3) > 6 + sl) return false;
+            Object.assign(welly, { home: true, scene: 'kitchen', moving: false, z: 0 });
+            sound.playBrush && sound.playBrush();
+            showToast('You put the welly back on the tray 👢 (it\'s a bit chewed)');
+            return true;
+        }
+
+        // ---- The crate: a wire crate with a blanket in it, between the bowls and the table ----
+        const CRATE = { x1: 133, x2: 167, back: 136, front: 148, top: 122, inside: { x: 151, y: 142 }, door: { x: 151, y: 156 } };
+        const CRATE_AVOID = [128, 172, 132, 151];
+        const WIRE = '#8b939c', WIRE_HI = '#c6ced6', WIRE_LO = '#4d535b';
+        function crateShut() { return dogs.some(d => d.inCrate && d.asleep() && outside.phase === 'night'); }
+        function drawCrateBack() {
+            const { x1, x2, back, front, top } = CRATE;
+            hd(ctx, x1 - 1, front - 1, x2 - x1 + 2, 2.5, 'rgba(40, 28, 18, 0.28)');                   // its shadow
+            for (let x = x1; x <= x2; x += 2.5) hd(ctx, x, top, 0.5, back - top, WIRE_LO);              // the back wall
+            [top, top + 4.5, top + 9, back - 0.5].forEach(y => hd(ctx, x1, y, x2 - x1, 0.5, WIRE_LO));
+            hd(ctx, x1, back, x2 - x1, front - back, '#33373d');                                         // the plastic tray
+            for (let y = back + 0.5; y < front - 1; y += 0.5)                                             // a checked blanket
+                for (let x = x1 + 1.5; x < x2 - 1.5; x += 0.5) {
+                    const cx = Math.floor((x - x1) / 3) % 2, cy = Math.floor((y - back) / 2) % 2;
+                    const ruck = Math.sin(x * 0.7 + y * 0.4) > 0.75;
+                    hd(ctx, x, y, 0.5, 0.5, shade(cx && cy ? '#6f8fb5' : cx || cy ? '#a8b3a0' : '#d8c9a2', ruck ? -0.12 : (y - back) * -0.012));
+                }
+        }
+        function drawCrateFront() {
+            const { x1, x2, front, top } = CRATE, ft = front - 14, shut = crateShut();
+            // the top: a mesh from the back edge to the front edge
+            for (let y = top; y <= ft; y += 3) hd(ctx, x1, y, x2 - x1, 0.5, WIRE);
+            for (let x = x1; x <= x2; x += 2.5) hd(ctx, x, top, 0.5, ft - top, WIRE);
+            hd(ctx, x1, top, 0.5, front - top, WIRE_HI); hd(ctx, x2, top, 0.5, front - top, WIRE_LO);   // the corners
+            hd(ctx, 146, top - 1.5, 10, 0.5, WIRE_HI); hd(ctx, 146, top - 1.5, 0.5, 1.5, WIRE); hd(ctx, 155.5, top - 1.5, 0.5, 1.5, WIRE);   // the handle
+            // the front, with the door in the middle (open by day; shut on a puppy asleep at night)
+            hd(ctx, x1, ft, x2 - x1 + 0.5, 0.5, WIRE_HI);
+            hd(ctx, x1, ft + 6.5, x2 - x1, 0.5, WIRE);
+            for (let x = x1 + 2.5; x < x2; x += 2.5) {
+                const door = x > 143 && x < 159;
+                if (!door || shut) hd(ctx, x, ft, 0.5, 14, door ? WIRE_HI : WIRE);
+            }
+            hd(ctx, 143, ft, 0.5, 14, WIRE_HI); hd(ctx, 159, ft, 0.5, 14, WIRE_LO);
+            if (shut) { hd(ctx, 157.5, ft + 6, 1.5, 1.5, WIRE_HI); }                                      // the latch
+            else for (let x = 143.5; x < 145; x += 0.5) hd(ctx, x, ft, 0.5, 14, WIRE);                    // the door, folded back
+            hd(ctx, x1, front - 2, x2 - x1 + 0.5, 2, '#2a2d32'); hd(ctx, x1, front - 2, x2 - x1 + 0.5, 0.5, '#4a4f57');   // the tray's lip
+        }
+
+        // Called from the main loop's draw list: the crate, and a welly lying about
+        function puppyThings(things, sc) {
+            if (sc === 'kitchen' && hasPuppy()) {
+                things.push({ y: CRATE.back - 1, draw: drawCrateBack });
+                things.push({ y: CRATE.front + 0.6, draw: drawCrateFront });
+            }
+            if (!welly.home && !welly.held && welly.scene === sc) things.push({ y: welly.y, draw: () => drawWellyDown(welly) });
+        }
+        function updatePuppies() {
+            if (!welly.home) updateThing(welly);
+            const av = SCENES.kitchen.avoid, i = av.indexOf(CRATE_AVOID), want = hasPuppy();
+            if (want && i < 0) av.push(CRATE_AVOID); else if (!want && i >= 0) av.splice(i, 1);
+        }
+
+        // ---- How a puppy differs ----
+        const PD = PixelDog.prototype;
+        const _getPose = PD.getPose, _describe = PD.describe, _step = PD.step, _chase = PD.updateChase, _goTo = PD.goTo;
+        const _goToBed = PD.goToBed, _findFun = PD.findFun, _timesUp = PD.timesUp, _update = PD.update, _chooseNext = PD.chooseNext;
+        PD.getPose = function() {
+            if (this.tumble > 0) return this.tumble > 36 ? 'bow' : this.tumble > 16 ? 'sleep_side' : 'lie';   // over it goes
+            if (this.state === 'welly') return 'tug';
+            return _getPose.call(this);
+        };
+        PD.describe = function() {
+            if (this.tumble > 0) return 'Fell over its own paws';
+            if (this.state === 'welly') return 'Chewing your wellies!';
+            if (this.inCrate && this.asleep()) return 'Fast asleep in the crate';
+            if (this.holding === 'welly') return this.state === 'chew' ? 'Chewing a welly' : 'Running off with a welly';
+            return _describe.call(this);
+        };
+        // Puppies trip over their own paws when they get going
+        PD.trip = function() {
+            this.tumble = 48;
+            particleScene = this.scene; spawnParticle('dust', this.x + this.facing * 4, this.y - 1);
+            if (this.visible() && Math.random() < 0.35) showToast(`${this.name} trips over their own paws 🐾`);
+            if (this.carry && this.carry.held === this && Math.random() < 0.5) this.dropCarry();
+        };
+        PD.step = function() {
+            if (!this.path) { this.state = 'stand'; this.timer = 20; return; }               // (stopped mid-walk)
+            if (this.tumble > 0) { this.tumble--; return; }
+            if (this.puppy && this.path && this.path.speed >= DOG_TROT && Math.random() < 0.004) return this.trip();
+            return _step.call(this);
+        };
+        PD.updateChase = function() {
+            if (this.tumble > 0) { this.tumble--; return; }
+            if (this.puppy && Math.random() < 0.005) return this.trip();
+            return _chase.call(this);
+        };
+        // In and out of the crate by its door
+        PD.goTo = function(x, y, then, o = {}) {
+            if (this.inCrate && !o.crate) {
+                this.inCrate = false;
+                const args = [x, y, then, o];
+                return _goTo.call(this, CRATE.door.x, CRATE.door.y, () => _goTo.apply(this, args), { doing: 'Out of the crate', crate: true, anywhere: true });
+            }
+            return _goTo.call(this, x, y, then, o);
+        };
+        PD.goToBed = function() {
+            const night = outside.phase === 'night' || outside.lateNight;
+            if (!this.puppy || this.scene !== 'kitchen' || dogs.some(d => d !== this && d.inCrate) || (!night && Math.random() < 0.4)) return _goToBed.call(this);
+            this.goTo(CRATE.door.x, CRATE.door.y, () => _goTo.call(this, CRATE.inside.x, CRATE.inside.y, () => {
+                this.inCrate = true; this.facing = -1; this.fallAsleep('sleep_side');
+            }, { doing: 'Into the crate', crate: true, anywhere: true }), { doing: night ? 'Off to the crate for the night' : 'Off for a nap in the crate' });
+        };
+        // Puppies sleep a lot, and chew a lot
+        PD.chooseNext = function(e) {
+            if (this.puppy && !this.walkies && !this.carry && this.scene === 'kitchen' && this.needs.energy < 0.55 && !(this.scared > 0.2) && !outside.storm && Math.random() < 0.35) return this.goToBed();
+            return _chooseNext.call(this, e);
+        };
+        PD.findFun = function() {
+            if (this.puppy && this.scene === 'kitchen' && welly.home && !dogs.some(d => d.state === 'welly' || (d.path && d.doing === 'Off to find your wellies')) && Math.random() < 0.3) {
+                this.goTo(WELLY_TRAY.x, WELLY_TRAY.y, () => { this.facing = 1; this.state = 'welly'; this.timer = 150 + Math.random() * 100; this.woof('happy'); }, { speed: DOG_TROT, doing: 'Off to find your wellies' });
+                return true;
+            }
+            return _findFun.call(this);
+        };
+        PD.timesUp = function(e) {
+            if (this.state === 'welly') {
+                if (welly.home && Math.random() < 0.7) {
+                    welly.home = false; welly.held = this; welly.scene = this.scene; welly.f = this.facing;
+                    this.carry = welly; this.holding = 'welly';
+                    this.toast(`${this.name} has pinched one of your wellies! 👢`);
+                    logDiary(`${this.name} ran off with a welly`, '👢', { key: 'welly', every: 30 });
+                    return this.trotOffWith();
+                }
+                return this.settle();
+            }
+            return _timesUp.call(this, e);
+        };
+        PD.update = function() {
+            if (this.puppy && !this.asleep() && this.state !== 'hide') this.needs.energy = clamp(this.needs.energy - 0.00005, 0, 1);   // (all go, then flat out)
+            if (this.inCrate && ['chase', 'door', 'away', 'out', 'tug', 'gate'].includes(this.state)) this.inCrate = false;
+            _update.call(this);
+            if (this.state === 'welly') this.x = WELLY_TRAY.x + Math.sin(globalTick * 0.07 + this.id) * 0.7;   // worrying at it
+            if (welly.held === this) welly.f = this.facing;
+        };
+
+        // ------------------------------------------------------------------
+        // YOUR COMPANY: the dogs and you. Where your pointer is on the floor is where you are:
+        // a dog will often come and follow you about, and sit at your feet when you stop (on a
+        // phone, tap the floor with Fuss to call one over). They give you a proper welcome when
+        // you come back after a while away, and if they haven't been out for ages, one goes and
+        // sits under the leads on the peg rail and looks at you. When you take the leads down
+        // for walkies, they're gone from the pegs until everyone's home.
+        // ------------------------------------------------------------------
+        const COMPANY_KEY = 'lisasDogHouse.company';
+        const you = { x: 160, y: 182, scene: 'kitchen', at: -1e9, moved: 0 };      // where you are (your pointer), and when you last moved
+        const company = (() => { try { return JSON.parse(localStorage.getItem(COMPANY_KEY) || 'null') || {}; } catch (e) { return {}; } })();
+        if (!company.lastWalk) company.lastWalk = Date.now();
+        function saveCompany() { if (window.__noSave) return; try { localStorage.setItem(COMPANY_KEY, JSON.stringify(company)); } catch (e) { /* fine */ } }
+        const LEADS_AT = { x: 299, y: 150 };                                   // where a dog sits to look meaningfully at the leads
+        const hoursSinceWalk = () => (Date.now() - company.lastWalk) / 3600e3;
+
+        // The leads on the peg rail (red for Mac, mustard for Cheese), drawn live so they can go walkies
+        function drawLeads() {
+            if (walkies.phase !== 'none') return;
+            [[298, '#c0392b'], [316, '#d9a521']].forEach(([px, col]) => {
+                const l = px + 0.2, r = px + 2.6;
+                for (let y = 52; y < 76; y += 0.5) { hd(ctx, l - 0.25, y, 0.5, 0.5, shade(col, 0.15)); hd(ctx, r - 0.25, y, 0.5, 0.5, shade(col, -0.15)); }
+                hd(ctx, l, 75, r - l, 2, '#b0b6bb'); hd(ctx, l, 75, r - l, 0.5, '#d8dde2');      // the clip
+            });
+        }
+
+        // Where to stand to be with you: beside you, on the floor, facing you
+        function bySide(d) {
+            const f = d.sc.floor, side = d.x < you.x ? -1 : 1;
+            let x = you.x + side * 18 * d.size / 1.3;
+            if (x < f.x1 + 6 || x > f.x2 - 6) x = you.x - side * 18 * d.size / 1.3;
+            return { x: clamp(x, f.x1, f.x2), y: clamp(you.y + 3, f.y1, f.y2) };
+        }
+        function youHere() { return you.scene === scene && globalTick - you.at < 60 * 8; }
+
+        canvas.addEventListener('pointermove', (e) => {
+            if (e.pointerType === 'touch') return;
+            const { x, y } = roomCoords(e), f = SCENES[scene].floor;
+            if (y < f.y1 - 6) return;                                          // (you're up on the wall: no)
+            you.moved += Math.hypot(x - you.x, y - you.y);
+            Object.assign(you, { x: clamp(x, f.x1, f.x2), y: clamp(y, f.y1, f.y2), scene, at: globalTick });
+        });
+        canvas.addEventListener('pointerleave', () => { you.at = -1e9; });
+
+        // Call a dog over (a tap on the floor with Fuss): the nearest one that's free comes to you
+        function callYou(mx, my) {
+            const f = SCENES[scene].floor;
+            Object.assign(you, { x: clamp(mx, f.x1, f.x2), y: clamp(my, f.y1, f.y2), scene, at: globalTick });
+            const d = dogs.filter(d => d.scene === scene && (d.free() || d.state === 'heel') && !d.asleep() && d.state !== 'hide')
+                          .sort((a, b) => Math.hypot(a.x - mx, a.y - my) - Math.hypot(b.x - mx, b.y - my))[0];
+            if (!d) { const z = dogs.find(d => d.scene === scene && d.asleep()); showToast(z ? `${z.name} opens one eye, and goes back to sleep 💤` : 'Nobody comes. They must be busy 🐾'); return; }
+            d.startFollowing(true);
+            showToast(pick([`"Here, ${d.name}!" And here comes ${d.name} 🐾`, `${d.name} trots over to see what you want 🐾`, `You pat your knees. ${d.name} comes running 🐾`]));
+        }
+
+        // A proper welcome when you've been away (on opening the game, or coming back to the tab)
+        function welcomeYou(hours) {
+            const keen = dogs.filter(d => d.scene === scene && !['door', 'away', 'gate', 'out'].includes(d.state) && !d.walkies && !(d.scared > 0.2));
+            if (!keen.length) return;
+            const f = SCENES[scene].floor;
+            Object.assign(you, { x: 160, y: f.y2, scene, at: globalTick });
+            keen.forEach((d, i) => {
+                breakTug(d);
+                if (d.carry) d.dropCarry();
+                d.wake(); d.stop(); d.target = null; d.state = 'stand'; d.timer = 9999;      // (until it's their turn to run over)
+                const s = { x: clamp(160 + (i - (keen.length - 1) / 2) * 58, f.x1, f.x2), y: f.y2 - 2 - (i % 2) * 5 };
+                setTimeout(() => {
+                    d.goTo(s.x, s.y, () => {
+                        d.facing = d.x < 160 ? 1 : -1; d.state = 'welcome'; d.timer = 180 + i * 30; d.wag = 1; d.woof('happy');
+                        for (let k = 0; k < 4; k++) setTimeout(() => { particleScene = d.scene; spawnParticle('heart', d.x + (Math.random() - 0.5) * 14, d.y - 26 * d.size / 1.3 - Math.random() * 4); }, k * 200);
+                    }, { speed: DOG_RUN, doing: "You're home!" });
+                }, 200 + i * 350);
+                d.needs.love = clamp(d.needs.love + 0.2, 0, 1);
+                if (hours > 3) d.bigWelcome = true;
+            });
+            const names = listNames(keen.map(d => d.name));
+            showToast(hours > 3 ? `You're home! ${names} ${keen.length > 1 ? 'have' : 'has'} missed you SO much 🐾💕` : `${names} ${keen.length > 1 ? 'come' : 'comes'} running to say hello 🐾`);
+            logDiary(`A big welcome home from ${names}`, '💕', { key: 'welcome', every: 20 });
+        }
+        let hiddenAt = 0;
+        document.addEventListener('visibilitychange', () => {
+            if (document.visibilityState === 'hidden') { hiddenAt = Date.now(); return; }
+            const mins = hiddenAt ? (Date.now() - hiddenAt) / 60000 : 0;
+            hiddenAt = 0;
+            if (mins >= 20) welcomeYou(mins / 60);
+        });
+
+        {
+            const PD = PixelDog.prototype;
+            const _getPose = PD.getPose, _describe = PD.describe, _timesUp = PD.timesUp, _update = PD.update, _findFun = PD.findFun, _stop = PD.stop;
+            PD.getPose = function() {
+                if (this.state === 'welcome') return Math.floor(this.timer / 22) % 3 === 1 ? 'bow' : 'beg';   // up, down, up: can't keep still
+                if (this.state === 'heel' || this.state === 'hint') return 'sit';
+                return _getPose.call(this);
+            };
+            PD.describe = function() {
+                if (this.state === 'welcome') return 'So pleased to see you!';
+                if (this.state === 'heel') return 'Sitting at your feet';
+                if (this.state === 'hint') return 'Looking at the leads. Then at you';
+                if (this.following && this.state === 'walk') return 'Following you about';
+                return _describe.call(this);
+            };
+            // Following you about
+            PD.startFollowing = function(called = false) {
+                this.following = { since: globalTick, called };
+                const s = bySide(this);
+                this.goTo(s.x, s.y, () => this.atHeel(), { speed: Math.hypot(s.x - this.x, s.y - this.y) > 70 ? DOG_TROT : DOG_WALK, doing: called ? 'Coming when called' : 'Following you about' });
+            };
+            PD.atHeel = function() {
+                this.facing = you.x > this.x ? 1 : -1;
+                this.state = 'heel'; this.timer = 40; this.wag = Math.max(this.wag, 0.7);
+            };
+            PD.stopFollowing = function() { this.following = null; };
+            PD.stop = function() { if (!this._keepFollow) this.following = null; return _stop.call(this); };
+            PD.timesUp = function(e) {
+                if (this.state === 'welcome') {
+                    if (this.bigWelcome && this.needs.energy > 0.3 && this.scene === 'garden') { this.bigWelcome = false; return this.startZoomies(4); }
+                    this.bigWelcome = false;
+                    this.state = 'greet'; this.timer = 200; return;
+                }
+                if (this.state === 'hint') {
+                    if (walkies.phase === 'none' && Math.random() < 0.5) this.toast(`${this.name} sighs, and gives up on walkies for now 🦮`);
+                    return this.settle();
+                }
+                if (this.state === 'heel') {
+                    const fl = this.following, long = fl && globalTick - fl.since > 60 * (fl.called ? 25 : 50);
+                    if (!fl || long || !(youHere() || fl.called && globalTick - you.at < 60 * 12) || you.scene !== this.scene) {
+                        this.following = null;
+                        if (Math.random() < 0.5) { this.state = 'lie'; this.timer = 250 + Math.random() * 300; return; }   // flop down at your feet
+                        return this.chooseNext(e);
+                    }
+                    const s = bySide(this);
+                    if (Math.hypot(s.x - this.x, (s.y - this.y) * 1.5) > 14) {
+                        this._keepFollow = true;
+                        this.goTo(s.x, s.y, () => this.atHeel(), { speed: Math.hypot(s.x - this.x, s.y - this.y) > 70 ? DOG_TROT : DOG_WALK, doing: 'Following you about' });
+                        this._keepFollow = false;
+                        return;
+                    }
+                    this.facing = you.x > this.x ? 1 : -1; this.timer = 30; return;
+                }
+                return _timesUp.call(this, e);
+            };
+            PD.update = function() {
+                // keep heading for you while you move (the walk's end follows you)
+                if (this.following && this.state === 'walk' && this.path && you.scene === this.scene && globalTick - you.at < 30) {
+                    const s = bySide(this);
+                    if (Math.hypot(s.x - this.path.x, s.y - this.path.y) > 8) { this.path.x = s.x; this.path.y = s.y; this.path.steps = 0; }
+                }
+                if (this.following && !['walk', 'heel', 'stand'].includes(this.state)) this.following = null;
+                if (this.state === 'welcome') this.wag = 1;
+                return _update.call(this);
+            };
+            // Something to do: come and be with you, or drop a hint about walkies
+            PD.findFun = function() {
+                if (youHere() && you.moved > 60 && !dogs.some(d => d.following) && this.state !== 'hide') {
+                    const w = this.character === 'cuddly' ? 0.7 : this.puppy ? 0.6 : 0.4;
+                    if (Math.random() < w) { you.moved = 0; this.startFollowing(); return true; }
+                }
+                if (this.scene === 'kitchen' && walkies.phase === 'none' && hoursSinceWalk() > 4 && niceOut() && outside.phase === 'day'
+                    && !dogs.some(d => d.state === 'hint' || (d.path && d.doing === 'Off to drop a hint')) && Math.random() < 0.2) {
+                    this.goTo(LEADS_AT.x, LEADS_AT.y, () => {
+                        this.facing = 1; this.state = 'hint'; this.timer = 360; this.wag = 0.5;
+                        this.toast(`${this.name} is sitting under the leads, looking at you. Hint, hint 🦮`);
+                        setTimeout(() => { if (this.state === 'hint') this.facing = -1; }, 2500);       // ...and then at you
+                    }, { doing: 'Off to drop a hint' });
+                    return true;
+                }
+                return _findFun.call(this);
+            };
+        }
+        // Walkies resets the clock (and takes the leads off the pegs: see drawLeads)
+        {
+            const _start = window.startWalkies;
+            window.startWalkies = function() {
+                const was = walkies.phase;
+                _start();
+                if (was === 'none' && walkies.phase !== 'none') { company.lastWalk = Date.now(); saveCompany(); dogs.forEach(d => { d.following = null; }); }
+            };
+        }
 
         // ------------------------------------------------------------------
         // YOUR DOGS: Mac and Cheese live here to begin with, but in Settings you can change them
@@ -7445,6 +8057,7 @@
                             ${sel('coat', i, Object.entries(DOG_COATS).map(([k, c]) => [k, c.name]), d.coat)}
                             ${sel('character', i, CHARACTERS, d.character)}
                             ${sel('voice', i, VOICES, d.voice)}
+                            <button onclick="togglePuppy(${i})" class="pixel-btn ${d.puppy ? 'active-btn' : ''} rounded px-2 py-0.5 text-base text-amber-100" title="A puppy: small, clumsy, chews everything, sleeps in a crate">🐶 Puppy${d.puppy ? ' ✓' : ''}</button>
                         </div>
                         <div class="flex flex-wrap gap-1 items-center">
                             <span class="text-sm text-amber-200/70 mr-1">Collar</span>
@@ -7453,7 +8066,7 @@
                     </div>
                 </div>`).join('') + `
                 <div class="flex flex-wrap gap-1.5">
-                    ${houseDraft.length < MAX_DOGS ? '<button onclick="addDog()" class="pixel-btn rounded px-2 py-1 text-base text-amber-100">➕ Add a dog</button>' : ''}
+                    ${houseDraft.length < MAX_DOGS ? '<button onclick="addDog()" class="pixel-btn rounded px-2 py-1 text-base text-amber-100">➕ Add a dog</button><button onclick="addDog(true)" class="pixel-btn rounded px-2 py-1 text-base text-amber-100">🐶 Add a puppy</button>' : ''}
                     <button onclick="applyHousehold()" class="pixel-btn pixel-btn-amber rounded px-3 py-1 text-base text-white">🏡 Move them in</button>
                     <button onclick="resetHousehold()" class="pixel-btn rounded px-2 py-1 text-base text-amber-100">Back to Mac and Cheese</button>
                 </div>
@@ -7467,7 +8080,7 @@
             g.fillStyle = '#e6d6b8'; g.fillRect(0, 0, 44, 36);
             g.fillStyle = '#b2a38a'; g.fillRect(0, 28, 44, 8);
             const d = new PixelDog(houseDraft[i], 9 + i);
-            Object.assign(d, { x: 19, y: 33, facing: 1, state: 'sit', animTick: 5, wag: 0, pant: true, size: d.size * 0.72 });   // (small enough to fit)
+            Object.assign(d, { x: 19, y: 33, facing: 1, state: 'sit', animTick: 5, wag: 0, pant: true, size: d.size * (d.puppy ? 1.1 : 0.72) });   // (small enough to fit)
             drawPixelDog(g, d);
         }
         window.editDog = function(i, key, v) {
@@ -7478,12 +8091,21 @@
             if (key === 'name') return;
             if (key === 'collar') renderHousePanel(); else drawHousePreview(i);
         };
-        window.addDog = function() {
+        window.togglePuppy = function(i) {
+            const d = houseDraft && houseDraft[i];
+            if (!d) return;
+            d.puppy = !d.puppy;
+            renderHousePanel();
+        };
+        window.addDog = function(puppy = false) {
             if (houseDraft.length >= MAX_DOGS) return;
             const taken = houseDraft.map(d => d.name);
-            const breed = pick(Object.keys(BREEDS));
+            // a puppy is usually another of what's already here (a little black Lab, for Mac and Cheese)
+            const like = puppy && houseDraft[0];
+            const breed = like ? like.breed : pick(Object.keys(BREEDS));
             houseDraft.push({ name: pick(DOG_NAME_IDEAS.filter(n => !taken.includes(n))), breed, coat: pick(Object.keys(DOG_COATS)), collar: pick(COLLARS),
-                              character: pick(CHARACTERS)[0], voice: breed === 'jack' || breed === 'dachshund' ? 'yap' : 'woof', size: BREED_SIZE[breed] || 1.3 });
+                              character: puppy ? 'bouncy' : pick(CHARACTERS)[0], voice: puppy || breed === 'jack' || breed === 'dachshund' ? 'yap' : 'woof', size: BREED_SIZE[breed] || 1.3,
+                              ...(puppy ? { puppy: true, coat: like.coat } : {}) });
             renderHousePanel();
         };
         window.removeDog = function(i) { if (houseDraft.length > 1) { houseDraft.splice(i, 1); renderHousePanel(); } };
@@ -7502,7 +8124,7 @@
         };
         function moveIn(list) {
             saveHousehold(list);
-            [ball, rope].forEach(o => { if (o.held) { o.held.carry = null; o.held.holding = null; o.held = null; } o.tug = null; });
+            [ball, rope, welly].forEach(o => { if (o.held) { o.held.carry = null; o.held.holding = null; o.held = null; } o.tug = null; });
             walkies.phase = 'none';
             buildHousehold(list);
             houseDraft = null;

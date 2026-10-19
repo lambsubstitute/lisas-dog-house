@@ -9,6 +9,9 @@ A cosy pixel-art farmhouse (kitchen and garden) where Lisa's two black Labradors
 - Two scenes (`scene` is the one on screen); every dog has `dog.scene` and lives on whether it's shown or not. The back door (`throughDoor`, `arrive`) moves dogs between them.
 - Dogs are `PixelDog`s; behaviour is `dog.state`, `getPose()` turns it into a pose, `dogPose()` places the parts, `drawDogBody()` draws them. `dogMouth()` says where the mouth is (for carrying the ball, tug of war).
 - Walking, trotting and the bound are timed by distance covered (`dog.gaitDist`), not the clock, so feet never skate. What dogs do on their own is `chooseNext` and `findFun`; GARDEN VISITORS has the squirrel and the blackbird.
+- Halloween and Bonfire Night (pumpkins, costumes, trick-or-treaters, fireworks, `scareDogs`, `calmDog`) are in HALLOWEEN & BONFIRE NIGHT; `isHalloween()`/`isBonfire()` go by the date.
+- Puppies are any dog with `cfg.puppy` (PUPPIES): `puppyBreed()` reshapes the breed and `PUPPY_SIZE` shrinks it; their tumbles, the wellies (`welly`) and the crate (`CRATE`) are there too, as wrappers round `PixelDog` methods.
+- You (the pointer on the floor, `you`), following, the welcome home (`welcomeYou`), the walkies hint and the live-drawn leads are in YOUR COMPANY; the time of the last walk is saved under `lisasDogHouse.company`.
 - Toys and floor things (ball, rope, treats, post, paw prints) are in TOYS & THINGS ON THE FLOOR. A dog on a walk has `scene === 'out'`.
 - The household (which dogs live here) is saved under `lisasDogHouse.household` (see YOUR DOGS); the rest under `lisasDogHouse.v1`. New breeds go in `BREEDS` (proportions) and `BREED_SIZE`; new coats in `DOG_COATS` (a `belly` different from `base` gives a white bib and socks).
 - Saves live in `localStorage` under `lisasDogHouse.v1` (weather settings under `lisasDogHouse.weather`). If you add to the save, give old saves a default. Tests set `window.__noSave`.
