@@ -4,7 +4,7 @@ A cosy pixel-art farmhouse (kitchen and garden) where Lisa's two black Labradors
 
 ## The shape of it
 
-- **Everything is in `index.html`**: no build step, no image or sound files. Only outside resources: the Tailwind play CDN, two Google fonts, Open-Meteo for real weather, and GoatCounter (`gc.zgo.at`) for visitor counts at the very end of the page.
+- **Everything is in `index.html`**: no build step, no image or sound files. Only outside resources: the Tailwind play CDN, two Google fonts, Open-Meteo for real weather, and GoatCounter (`gc.zgo.at`) for visitor counts and play-time events at the very end of the page.
 - Find your way by the capitalised section banners: `grep -nE '^\s*// [A-Z0-9][A-Z0-9 &:,()-]{5,}' index.html`.
 - Two scenes (`scene` is the one on screen); every dog has `dog.scene` and lives on whether it's shown or not. The back door (`throughDoor`, `arrive`) moves dogs between them.
 - Dogs are `PixelDog`s; behaviour is `dog.state`, `getPose()` turns it into a pose, `dogPose()` places the parts, `drawDogBody()` draws them. `dogMouth()` says where the mouth is (for carrying the ball, tug of war).
